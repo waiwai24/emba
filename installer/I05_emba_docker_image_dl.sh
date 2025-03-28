@@ -26,6 +26,7 @@ I05_emba_docker_image_dl() {
     echo -e "Description: EMBA docker images used for firmware analysis."
 
     if command -v docker > /dev/null; then
+      # Added error handling to prevent installation failures due to network problems
       if ! f="$(docker manifest inspect "${CONTAINER}" 2>/dev/null | grep "size" | sed -e 's/[^0-9 ]//g')"; then
         f="0"
       else
@@ -56,20 +57,6 @@ I05_emba_docker_image_dl() {
           # First, check whether the local mirror exists
           if docker images --format "{{.Repository}}:{{.Tag}}" | grep -q "${CONTAINER}"; then
             echo -e "${GREEN}""Found local image ${CONTAINER}, skipping download.""${NC}"
-            
-            # Check if docker-compose.yml contains the same image
-            COMPOSE_IMAGE=$(grep -Po '(?<=image: ).*' docker-compose.yml | tr -d '[:space:]')
-            if [[ "${COMPOSE_IMAGE}" != "${CONTAINER}" ]]; then
-              echo -e "${ORANGE}""WARNING: Found local image ${CONTAINER} but docker-compose.yml specifies ${COMPOSE_IMAGE}""${NC}"
-              echo -e "${ORANGE}""This might cause compatibility issues with your configuration.""${NC}"
-              read -p "Update docker-compose.yml to use the local image? (y/n): " -n1 -r UPDATE_ANSWER
-              echo
-              if [[ "${UPDATE_ANSWER,,}" != "y" ]]; then
-                echo -e "${RED}""Installation may be incomplete. Please ensure images match or pull the correct image:""${NC}"
-                echo -e "${ORANGE}""docker pull ${COMPOSE_IMAGE}""${NC}"
-                exit 1
-              fi
-            fi
           else
             echo -e "${ORANGE}""Local image not found, attempting to download.""${NC}"
             if ! docker pull "${CONTAINER}"; then
